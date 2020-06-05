@@ -24,8 +24,8 @@ conditions are met:
    specific prior written permission.
 
 Further modifications have been made by James Cooper,
-for use in a the CML Benchmarks project
-
+for use in the CML Benchmarks project (see
+https://github.com/jcoo092/cml_benchmarks)
 *)
 
 (*
@@ -3200,6 +3200,57 @@ fun *> n = map (fn x => Number.*(n,x))
 fun normInf a =
     let fun accum (y,x) = Number.max(x,Number.abs y)
     in  foldl accum Number.zero a
+    end
+fun dot (a, b) =
+    let
+        exception DotInnerSizeMismatch
+        exception NonTwoOrderTensor
+
+        val _ = if (List.length (shape a)) = 2 andalso (List.length (shape b)) = 2 then
+                    ()
+                else
+                    raise NonTwoOrderTensor
+
+        val [ra,ca] = shape a
+        val [rb,cb] = shape b
+        val _ = TextIO.print("ra: " ^ (Int.toString ra) ^ ".\n")
+        val _ = TextIO.print("cb: " ^ (Int.toString cb) ^ ".\n")
+
+        (* val _ = assert(ca = rb) *)
+        val _ = if ca = rb then
+                    ()
+                else
+                    raise DotInnerSizeMismatch
+
+        val y = new ([ra, cb], Number.zero)
+    in
+        Loop.app (0, cb,
+                  (fn (icb) =>
+                      (TextIO.print("icb: " ^ (Int.toString icb) ^ ".\n");
+                       Loop.app (0, ra,
+                                 fn(ira) =>
+                                    (TextIO.print("ira: " ^ (Int.toString ira) ^ ".\n");
+                                     let val absum =
+                                             Loop.foldi (0, ca,
+                                                         (fn (i, sum) =>
+                                                             let val _ = TextIO.print("[ira, i]: [" ^ Int.toString(ira) ^ ", " ^ Int.toString(i) ^ " ].\n")
+                                                                 val _ = TextIO.print("[icb, i]: [" ^ Int.toString(i) ^ ", " ^ Int.toString(icb) ^ " ].\n")
+                                                                 val ai  = sub (a,[ira,i])
+                                                                 val bi =  sub (b,[i,icb])
+                                                             in
+                                                                 (* sum + ai*bi *)
+                                                                 Number.*+(ai, bi, sum)
+                                                             end), Number.zero)
+                                     in
+                                         update(y, [ira, icb], absum)
+                                     end)))));
+        y
+    end
+fun transpose a =
+    let
+        val [r, c] = shape a
+    in
+        reshape [c,r]  a
     end
 end (* NumberTensor *)
 

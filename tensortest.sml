@@ -1,4 +1,3 @@
-
 (*
  Copyright (c) Ivan Raikov.
  All rights reserved.
@@ -25,11 +24,11 @@ conditions are met:
 structure TensorTest =
 struct
 
-fun putStrLn (file, str) = 
+fun putStrLn (file, str) =
     (TextIO.output (file, str);
      TextIO.output (file, "\n"))
-    
-fun putStr (file, str) = 
+
+fun putStr (file, str) =
     (TextIO.output (file, str))
 
 
@@ -39,7 +38,7 @@ fun assert true = ()
   | assert false = raise Assert
 
 val _ = print "slidingWindow: "
-val _ = 
+val _ =
     let
         val m = 3
         val n = 4
@@ -54,33 +53,33 @@ val _ =
         val _ = TensorFile.intListWrite TextIO.stdOut (Index.last (RTensor.shape A))
         val _ = putStrLn (TextIO.stdOut, "sliding win next index = ")
         val _ = TensorFile.intListWrite TextIO.stdOut (Index.+(Index.first (RTensor.shape A), [0,1]))
-        val win = RTensorSlidingWindow.fromto'([0,0],Index.last (RTensor.shape A),[0,1],A) 
+        val win = RTensorSlidingWindow.fromto'([0,0],Index.last (RTensor.shape A),[0,1],A)
         val _ = putStrLn (TextIO.stdOut, "win length = " ^ (Int.toString  (RTensorSlidingWindow.length win)))
         val _ = putStr (TextIO.stdOut, "shape win = ")
         val _ = TensorFile.intListWrite TextIO.stdOut (SlidingRange.shape (RTensorSlidingWindow.range win))
     in
-        putStr (TextIO.stdOut, "win [0,0] = "); 
+        putStr (TextIO.stdOut, "win [0,0] = ");
         TensorFile.realWrite (TextIO.stdOut) (RTensorSlidingWindow.sub win [0,0]);
-        putStr (TextIO.stdOut, "win [1,0] = "); 
+        putStr (TextIO.stdOut, "win [1,0] = ");
         TensorFile.realWrite (TextIO.stdOut) (RTensorSlidingWindow.sub win [1,0]);
-        putStr (TextIO.stdOut, "win stride 0 = "); 
+        putStr (TextIO.stdOut, "win stride 0 = ");
         RTensorSlidingWindow.app (fn (v) => TensorFile.realWrite (TextIO.stdOut) v) win;
         RTensorSlidingWindow.shiftr win;
-        putStr (TextIO.stdOut, "win [0,0] = "); 
+        putStr (TextIO.stdOut, "win [0,0] = ");
         TensorFile.realWrite (TextIO.stdOut) (RTensorSlidingWindow.sub win [0,0]);
-        putStr (TextIO.stdOut, "win [1,0] = "); 
+        putStr (TextIO.stdOut, "win [1,0] = ");
         TensorFile.realWrite (TextIO.stdOut) (RTensorSlidingWindow.sub win [1,0]);
-        putStr (TextIO.stdOut, "win stride 1 = "); 
+        putStr (TextIO.stdOut, "win stride 1 = ");
         RTensorSlidingWindow.app (fn (v) => TensorFile.realWrite (TextIO.stdOut) v) win;
         RTensorSlidingWindow.shiftr win;
-        putStr (TextIO.stdOut, "win [0,0] = "); 
+        putStr (TextIO.stdOut, "win [0,0] = ");
         TensorFile.realWrite (TextIO.stdOut) (RTensorSlidingWindow.sub win [0,0]);
-        putStr (TextIO.stdOut, "win [1,0] = "); 
+        putStr (TextIO.stdOut, "win [1,0] = ");
         TensorFile.realWrite (TextIO.stdOut) (RTensorSlidingWindow.sub win [1,0]);
-        putStr (TextIO.stdOut, "win stride 2 = "); 
+        putStr (TextIO.stdOut, "win stride 2 = ");
         RTensorSlidingWindow.app (fn (v) => TensorFile.realWrite (TextIO.stdOut) v) win;
         RTensorSlidingWindow.reset win;
-        putStr (TextIO.stdOut, "win stride 0 after reset = "); 
+        putStr (TextIO.stdOut, "win stride 0 after reset = ");
         RTensorSlidingWindow.app (fn (v) => TensorFile.realWrite (TextIO.stdOut) v) win
     end
 
@@ -118,14 +117,14 @@ val _  = TensorFile.realTensorLineWrite (TextIO.stdOut) (RTensorSlice.map (fn (x
 val _ = print "realRandomTensor: "
 
 fun realRandomTensor (xseed,yseed) shape =
-    let 
+    let
         val length = Index.length shape
         val seed   = Random.rand (xseed,yseed)
         val a      = RTensor.Array.array(length, Random.randReal seed)
         fun loop 0 = RTensor.fromArray(shape, a)
           | loop j = (RTensor.Array.update(a, length-j, Random.randReal seed);
                       loop (j-1))
-    in 
+    in
         loop (length - 1)
     end
 
@@ -337,25 +336,25 @@ val _ = (print "S(3,3) = "; TensorFile.realWrite (TextIO.stdOut) v)
 
 fun fromDiag (m, n, a, dflt) =
     if Index.validShape [m,n]
-    then 
-        (let 
-             val na   = RTensor.Array.length a
-             val na'  = na-1
-             val te = RTensor.new ([m,n], dflt)
-             fun diag (i, j, ia) =
-                 let
-                     val ia' = 
-                         (RTensor.update (te, [i,j], RTensor.Array.sub (a, ia));
-                          if ia = na' then 0 else ia+1)
-                 in
-                     if (i=0) orelse (j=0) 
-                     then te
-                     else diag (i-1, j-1, ia)
-                 end
-         in
-             diag (m-1, n-1, 0)
-         end)
-    else 
+    then
+        (let
+            val na   = RTensor.Array.length a
+            val na'  = na-1
+            val te = RTensor.new ([m,n], dflt)
+            fun diag (i, j, ia) =
+                let
+                    val ia' =
+                        (RTensor.update (te, [i,j], RTensor.Array.sub (a, ia));
+                         if ia = na' then 0 else ia+1)
+                in
+                    if (i=0) orelse (j=0)
+                    then te
+                    else diag (i-1, j-1, ia)
+                end
+        in
+            diag (m-1, n-1, 0)
+        end)
+    else
         raise RTensor.Shape
 
 
@@ -364,27 +363,27 @@ val diagtensor = fromDiag (4, 4, Real64Array.fromList [1.0, 2.0, 3.0], 0.0)
 val _  = TensorFile.realTensorWrite (TextIO.stdOut) diagtensor
 
 fun convolve hs xs =
-  let 
-      val [m,_] = RTensor.shape hs
-      val [n,_] = RTensor.shape xs
-      val outputLen = m + n - 1
-      val y = RTensor.new ([outputLen, 1], 0.0)
-  in
-      Loop.app (0, outputLen, 
-                (fn (i) =>
-                    Loop.app (0, m, 
-                              fn (j) => 
-                              (if (i - j) >= 0 andalso (i - j) < n
-                               then (let val yi  = RTensor.sub (y,[i,0])
-                                         val xij = RTensor.sub (xs,[i-j,0])
-                                         val hj  = RTensor.sub (hs,[j,0])
-                                     in
-                                         RTensor.update (y, [i,0], Real.+ (yi, Real.* (xij, hj)))
-                                     end)
-                               else ()))
-               ));
-      y
-  end
+    let
+        val [m,_] = RTensor.shape hs
+        val [n,_] = RTensor.shape xs
+        val outputLen = m + n - 1
+        val y = RTensor.new ([outputLen, 1], 0.0)
+    in
+        Loop.app (0, outputLen,
+                  (fn (i) =>
+                      Loop.app (0, m,
+                                fn (j) =>
+                                   (if (i - j) >= 0 andalso (i - j) < n
+                                    then (let val yi  = RTensor.sub (y,[i,0])
+                                              val xij = RTensor.sub (xs,[i-j,0])
+                                              val hj  = RTensor.sub (hs,[j,0])
+                                          in
+                                              RTensor.update (y, [i,0], Real.+ (yi, Real.* (xij, hj)))
+                                          end)
+                                    else ()))
+                 ));
+        y
+    end
 
 
 val t = convolve (RTensor.fromList ([3,1],[1.0, 2.0, 3.0]))
@@ -393,8 +392,8 @@ val t = convolve (RTensor.fromList ([3,1],[1.0, 2.0, 3.0]))
 val _  = TensorFile.realTensorWrite (TextIO.stdOut) t
 
 
-val SA  = RTensor.fromList 
-              ([6,6], 
+val SA  = RTensor.fromList
+              ([6,6],
                List.concat
                    [
                      [10.0,3.0,0.0,3.0,0.0,0.0],
@@ -407,13 +406,13 @@ val SA  = RTensor.fromList
 
 
 val _ = Loop.app
-            (0,6,fn (i) => 
-                    Loop.app (0,6,fn (j) => 
+            (0,6,fn (i) =>
+                    Loop.app (0,6,fn (j) =>
                                      (
-                                      print ("SA(" ^ (Int.toString i) ^ "," ^ (Int.toString j) ^ ") = "); 
-                                      TensorFile.realWrite 
-                                          (TextIO.stdOut) 
-                                          (RTensor.sub (SA,[i,j]))
+                                       print ("SA(" ^ (Int.toString i) ^ "," ^ (Int.toString j) ^ ") = ");
+                                       TensorFile.realWrite
+                                           (TextIO.stdOut)
+                                           (RTensor.sub (SA,[i,j]))
                                      )
             ))
 
@@ -421,53 +420,53 @@ val seed   = Random.rand (1,19)
 fun random_int (imin,imax) = Random.randRange (imin,imax) seed
 
 fun sampleN n =
-  let
-      val i = ref 0
-      val sample = Array.array (n+1, 0)
-  in
-      (sample,
-       fn (x) =>
-          (i := (!i)+1;
-           if (!i) <= n
-           then Array.update (sample, !i, x)
-           else (if random_int (0, !i) < n
-                 then Array.update(sample, random_int (0, n), x) else ())))
-  end
+    let
+        val i = ref 0
+        val sample = Array.array (n+1, 0)
+    in
+        (sample,
+         fn (x) =>
+            (i := (!i)+1;
+             if (!i) <= n
+             then Array.update (sample, !i, x)
+             else (if random_int (0, !i) < n
+                   then Array.update(sample, random_int (0, n), x) else ())))
+    end
 
 
 val (sample,fsample) = sampleN 100
 
 val _ = Loop.app (0,100,fn (i) => Loop.app (0,100,fn (j) => fsample (100*i + j)))
 val _ = Loop.app
-            (0,100,fn (i) => 
+            (0,100,fn (i) =>
                       putStrLn (TextIO.stdOut,
                                 ("sample(" ^ (Int.toString i) ^ ") = " ^ (Int.toString (Array.sub(sample, i))))))
 fun dot a b =
-  let 
-      val [ra,ca] = RTensor.shape a
-      val [rb,cb] = RTensor.shape b
+    let
+        val [ra,ca] = RTensor.shape a
+        val [rb,cb] = RTensor.shape b
 
-      val _ = assert(ca = rb)
-                    
-      val y = RTensor.new ([ra, cb], 0.0)
-  in
-      Loop.app (0, cb, 
-                (fn (icb) =>
-                    Loop.app (0, ra,
-                              fn(ira) =>
-                                 let val absum =
-                                         Loop.foldi (0, ca, 
-                                                     (fn (i, sum) =>
-                                                         let val ai  = RTensor.sub (a,[ira,i])
-                                                             val bi =  RTensor.sub (b,[icb,i])
-                                                         in
-                                                             sum + ai*bi
-                                                         end), 0.0)
-                                 in
-                                     RTensor.update(y, [ira, icb], absum)
-                                 end)));
-      y
-  end
+        val _ = assert(ca = rb)
+
+        val y = RTensor.new ([ra, cb], 0.0)
+    in
+        Loop.app (0, cb,
+                  (fn (icb) =>
+                      Loop.app (0, ra,
+                                fn(ira) =>
+                                   let val absum =
+                                           Loop.foldi (0, ca,
+                                                       (fn (i, sum) =>
+                                                           let val ai  = RTensor.sub (a,[ira,i])
+                                                               val bi =  RTensor.sub (b,[icb,i])
+                                                           in
+                                                               sum + ai*bi
+                                                           end), 0.0)
+                                   in
+                                       RTensor.update(y, [ira, icb], absum)
+                                   end)));
+        y
+    end
 
 val a = RTensor.fromList ([2,2],[1.0, 0.0, 0.0, 1.0])
 val _  = TensorFile.realTensorWrite (TextIO.stdOut) a
@@ -479,6 +478,6 @@ val t = dot a b
 
 val _  = TensorFile.realTensorWrite (TextIO.stdOut) t
 
-      
+
 
 end
