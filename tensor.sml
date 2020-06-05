@@ -47,6 +47,13 @@ structure IntArray =
     end
 *)
 
+fun listToString l = let
+    val s = List.map Int.toString l
+    val c = String.concatWith ", " s
+in
+    "[ " ^ c ^ " ]"
+end
+
 
 signature MONO_VECTOR =
 sig
@@ -290,10 +297,12 @@ local
     end
     fun determineTensorName [1, _] = "Row Vector"
       | determineTensorName [_, 1] = "Column Vector"
+      | determineTensorName [_, _] = "Matrix"
       | determineTensorName _ = "Tensor"
 
     fun determineOrder [1, _] = ""
       | determineOrder [_, 1] = ""
+      | determineOrder [_, _] = ""
       | determineOrder s = " of order " ^ Int.toString(List.length s)
 in
 fun toString shape = let
@@ -771,7 +780,16 @@ fun fromto shape (lo, up) =
     then RangeIn(shape,lo,up)
     else RangeEmpty
 
-fun fromto' shape (lo, up) = fromto shape (lo, (Index.prev' shape up))
+(* fun fromto' shape (lo, up) = fromto shape (lo, (Index.prev' shape up)) *)
+fun fromto' shape (lo, up) = let
+    val diffs = ListPair.map Int.- (up, lo)
+    val _ = if List.all (fn x => x > 0) diffs then
+                ()
+            else
+                raise Range
+in
+    fromto shape (lo, (List.map (fn x => x - 1) up))
+end
 
 fun upto shape index = fromto shape (Index.first index, index)
 
@@ -1518,6 +1536,9 @@ sig
     val foldl  : ('a * 'b -> 'b) -> 'b -> 'a slice -> 'b
     val modifyi  : (index * 'a -> 'a) -> 'a slice -> unit
 
+    val toTensor : 'a slice -> 'a tensor
+    val sliceOutNewTensor : index * index * 'a tensor -> 'a tensor
+    val sliceOutNewTensor' : index * index * 'a tensor -> 'a tensor
 end
 
 
@@ -1862,10 +1883,12 @@ fun map f slice =
         val len   = length slice
         val fndx  = Range.first ra
         val arr   = Array.array (length slice, f (Tensor.sub (te,fndx)))
+        val lndx = Range.last ra
+        val final_shape = ListPair.map (fn (a, b) => b - a + 1) (fndx, lndx)
         val i     = ref 0
     in
         Range.iteri (fn (ndx) => let val v = f (Tensor.sub (te,ndx)) in (Array.update (arr, !i, v); i := (!i + 1); true) end) ra;
-        Tensor.fromArray ([1,len], arr)
+        Tensor.fromArray (final_shape, arr)
     end
 
 fun app f (slice: 'a slice) =
@@ -1923,6 +1946,20 @@ fun modifyi f (slice: 'a slice) =
     in
         Range.iteri (fn (ndx) => (Tensor.update(te, ndx, f (ndx, Tensor.sub (te,ndx))); true)) ra; ()
     end
+
+fun toTensor slice = map (fn i => i) slice
+
+fun sliceOutNewTensor(i1, i2, t) = let
+    val s = fromto(i1, i2, t)
+in
+    toTensor s
+end
+
+fun sliceOutNewTensor'(i1, i2, t) = let
+    val s = fromto'(i1, i2, t)
+in
+    toTensor s
+end
 
 end
 
@@ -3204,17 +3241,21 @@ fun normInf a =
 fun dot (a, b) =
     let
         exception DotInnerSizeMismatch
-        exception NonTwoOrderTensor
+        exception DotNonSecondOrderTensor
 
         val _ = if (List.length (shape a)) = 2 andalso (List.length (shape b)) = 2 then
                     ()
                 else
-                    raise NonTwoOrderTensor
+                    raise DotNonSecondOrderTensor
 
-        val [ra,ca] = shape a
-        val [rb,cb] = shape b
-        val _ = TextIO.print("ra: " ^ (Int.toString ra) ^ ".\n")
-        val _ = TextIO.print("cb: " ^ (Int.toString cb) ^ ".\n")
+        (* val [ra,ca] = shape a
+        val [rb,cb] = shape b *)
+        val sa = shape a
+        val sb = shape b
+        val ra = List.hd sa
+        val ca = List.nth(sa, 1)
+        val rb = List.hd sb
+        val cb = List.nth(sb, 1)
 
         (* val _ = assert(ca = rb) *)
         val _ = if ca = rb then
@@ -3225,32 +3266,36 @@ fun dot (a, b) =
         val y = new ([ra, cb], Number.zero)
     in
         Loop.app (0, cb,
-                  (fn (icb) =>
-                      (TextIO.print("icb: " ^ (Int.toString icb) ^ ".\n");
-                       Loop.app (0, ra,
-                                 fn(ira) =>
-                                    (TextIO.print("ira: " ^ (Int.toString ira) ^ ".\n");
-                                     let val absum =
-                                             Loop.foldi (0, ca,
-                                                         (fn (i, sum) =>
-                                                             let val _ = TextIO.print("[ira, i]: [" ^ Int.toString(ira) ^ ", " ^ Int.toString(i) ^ " ].\n")
-                                                                 val _ = TextIO.print("[icb, i]: [" ^ Int.toString(i) ^ ", " ^ Int.toString(icb) ^ " ].\n")
-                                                                 val ai  = sub (a,[ira,i])
-                                                                 val bi =  sub (b,[i,icb])
-                                                             in
-                                                                 (* sum + ai*bi *)
-                                                                 Number.*+(ai, bi, sum)
-                                                             end), Number.zero)
-                                     in
-                                         update(y, [ira, icb], absum)
-                                     end)))));
+                  fn icb =>
+                     Loop.app (0, ra,
+                               fn ira =>
+                                  let val absum =
+                                          Loop.foldi (0, ca,
+                                                      (fn (i, sum) =>
+                                                          let val ai  = sub (a,[ira,i])
+                                                              val bi =  sub (b,[i,icb])
+                                                          in
+                                                              (* sum + ai*bi *)
+                                                              Number.*+(ai, bi, sum)
+                                                          end), Number.zero)
+                                  in
+                                      update(y, [ira, icb], absum)
+                                  end));
         y
     end
 fun transpose a =
     let
-        val [r, c] = shape a
+        exception TransposeNonSecondOrderTensor
+        val _ = if (List.length (shape a)) = 2 then
+                    ()
+                else
+                    raise TransposeNonSecondOrderTensor
+
+        val s = shape a
+        val r = List.hd s
+        val c = List.nth (s, 1)
     in
-        reshape [c,r]  a
+        reshape [c,r] a
     end
 end (* NumberTensor *)
 
